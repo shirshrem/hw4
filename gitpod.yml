@@ -5,7 +5,7 @@ github:
     addLabel: prebuilt-in-gitpod
 tasks:
 - init: pip3 install -r requirements.txt
-  ommand: python3 src/app.py
+  command: python3 src/app.py
 - command: bash setup_pycalc.sh
  
 ports:

@@ -2,7 +2,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from sklearn import svm, datasets
-
+import random
 
 def plot_results(models, titles, X, y, plot_sv=False):
     # Set-up 2x2 grid for plotting.
@@ -21,14 +21,16 @@ def plot_results(models, titles, X, y, plot_sv=False):
         ax.scatter(X0, X1, c=y, cmap=plt.cm.coolwarm, s=20, edgecolors="k")
         if plot_sv:
             sv = clf.support_vectors_
-            ax.scatter(sv[:, 0], sv[:, 1], c='k', s=60)
+            ax.scatter(sv[:, 0], sv[:, 1], c="k", s=60)
 
         ax.set_xticks(())
         ax.set_yticks(())
         ax.set_title(title)
-        ax.set_aspect('equal', 'box')
+        ax.set_aspect("equal", "box")
     fig.tight_layout()
     plt.show()
+    plt.savefig(title + ".pdf")
+
 
 def make_meshgrid(x, y, h=0.02):
     """Create a mesh of points to plot in
@@ -65,10 +67,10 @@ def plot_contours(ax, clf, xx, yy, **params):
     out = ax.contourf(xx, yy, Z, **params)
     return out
 
+
 C_hard = 1000000.0  # SVM regularization parameter
 C = 10
 n = 100
-
 
 
 # Data is labeled by a circle
@@ -78,8 +80,100 @@ angles = 2 * math.pi * np.random.random(2 * n)
 X1 = (radius * np.cos(angles)).reshape((2 * n, 1))
 X2 = (radius * np.sin(angles)).reshape((2 * n, 1))
 
-X = np.concatenate([X1,X2],axis=1)
-y = np.concatenate([np.ones((n,1)), -np.ones((n,1))], axis=0).reshape([-1])
+X = np.concatenate([X1, X2], axis=1)
+y = np.concatenate([np.ones((n, 1)), -np.ones((n, 1))], axis=0).reshape([-1])
 
 
+def train_a(X_train, Y_train):
+    """
+    Train three soft SVM models with regularization parameter C = 10.
+    Using:
+    - linear kernel,
+    - homogeneous polynomial kernel of degree 2,
+    - homogeneous polynomial kernel of degree 3
+    """
+    model1 = svm.SVC(C=C, kernel="linear")
+    model1.fit(X_train, Y_train)
+    model2 = svm.SVC(C=C, kernel="poly", degree=2)
+    model2.fit(X_train, Y_train)
+    model3 = svm.SVC(C=C, kernel="poly", degree=3)
+    model3.fit(X_train, Y_train)
+    fitted_estimators = [model1, model2, model3]
+    models_names = ["linear", "homogeneous deg 2", "homogeneous deg 3"]
+    res = [fitted_estimators, models_names]
+    return res
 
+
+def train_b(X_train, Y_train):
+    """
+    Train three soft SVM models with regularization parameter C = 10.
+    Using:
+    - linear kernel,
+    - non-homogeneous polynomial kernel of degree 2,
+    - non-homogeneous polynomial kernel of degree 3
+    """
+
+    model1 = svm.SVC(C=C, kernel="linear")
+    model1.fit(X_train, Y_train)
+    model2 = svm.SVC(C=C, kernel="poly", degree=2, coef0=1)
+    model2.fit(X_train, Y_train)
+    model3 = svm.SVC(C=C, kernel="poly", degree=3, coef0=1)
+    model3.fit(X_train, Y_train)
+    fitted_estimators = [model1, model2, model3]
+    models_names = ["linear", "non-homogeneous deg 2", "non-homogeneous deg 3"]
+    res = [fitted_estimators, models_names]
+    return res
+
+
+def train_c(X_train, Y_train, gamma):
+    """
+    Train a soft-SVM model with a (non-homogeneous) polynomial kernel of degree 2,
+    and another model using RBF kernel with γ = 10
+    """
+    model1 = svm.SVC(C=C, kernel="poly", degree=2, coef0=1)
+    model1.fit(X_train, Y_train)
+    model2 = svm.SVC(C=C, kernel="rbf", gamma=gamma)
+    model2.fit(X_train, Y_train)
+    fitted_estimators = [model1, model2]
+    models_names = ["non-homogeneous deg 2", "rbf gamma " + str(gamma)]
+    res = [fitted_estimators, models_names]
+    return res
+
+
+C_hard = 1000000.0  # SVM regularization parameter
+C = 10
+n = 100
+
+# Data is labeled by a circle
+
+radius = np.hstack([np.random.random(n), np.random.random(n) + 1.5])
+angles = 2 * math.pi * np.random.random(2 * n)
+X1 = (radius * np.cos(angles)).reshape((2 * n, 1))
+X2 = (radius * np.sin(angles)).reshape((2 * n, 1))
+
+X = np.concatenate([X1, X2], axis=1)
+y = np.concatenate([np.ones((n, 1)), -np.ones((n, 1))], axis=0).reshape([-1])
+
+# Section a
+results = train_a(X, y)
+plot_results(results[0], results[1], X, y)
+
+# Section b
+results = train_b(X, y)
+plot_results(results[0], results[1], X, y)
+
+# Section c
+# perturb the labels
+for i in range(len(y)):
+    if y[i] < 0:
+        if random.uniform(0.0, 1.0) <= 0.1:
+            y[i] = 1
+
+results = train_c(X, y, gamma=10)
+plot_results(results[0], results[1], X, y)
+
+# check different gammas
+gammas = [0.01, 0.1, 1, 100]
+for i in range(len(gammas)):
+    results = train_c(X, y, gamma=gammas[i])
+    plot_results(results[0], results[1], X, y)
